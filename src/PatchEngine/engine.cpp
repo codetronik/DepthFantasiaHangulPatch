@@ -1,17 +1,11 @@
 #include <windows.h>
 #include <stdlib.h>
 #include <locale.h>
-#include "detours\detours.h"
+#include "engine.h"
+#include "hook.h"
 #include "Log.h"
 
-typedef struct _DIC
-{
-	char szChinese[512];
-	int nChineseLen;
-	char szKorean[512];
-} DIC;
-
-int LoadDictionary(char* szFileName, DIC *dic)
+int LoadDictionary(char* szFileName, DIC *dic, BOOL bNeedBlank)
 {
 	char szCurrentDirectory[MAX_PATH] = { 0, };
 	GetCurrentDirectoryA(MAX_PATH, szCurrentDirectory);
@@ -38,14 +32,19 @@ int LoadDictionary(char* szFileName, DIC *dic)
 		char* token = strtok_s(buf, "=", &context);
 		char* token2 = strtok_s(NULL, "=", &context);
 
-		WCHAR szUnicode[200] = L"";
-
+		// 주석처리
+		char *comment = strstr(token2, " //");
+		if (comment)
+		{
+			comment = 0x0;
+		}
+		WCHAR szUnicode[512] = L"";
+		
 		// UTF-8을 유니코드로 변환
 		MultiByteToWideChar(CP_UTF8, 0, token, strlen(token), szUnicode, sizeof(szUnicode));
 		// 유니코드를 BIG5로 변환
 		WideCharToMultiByte(950, 0, szUnicode, lstrlenW(szUnicode), dic[nDicCount].szChinese, sizeof(dic[nDicCount].szChinese), NULL, NULL);
 		dic[nDicCount].nChineseLen = strlen(dic[nDicCount].szChinese);
-
 		ZeroMemory(szUnicode, sizeof(szUnicode));
 
 		// UTF-8을 유니코드로 변환
@@ -54,23 +53,25 @@ int LoadDictionary(char* szFileName, DIC *dic)
 
 		WideCharToMultiByte(949, 0, szUnicode, lstrlenW(szUnicode), dic[nDicCount].szKorean, sizeof(dic[nDicCount].szKorean), NULL, NULL);
 		dic[nDicCount].szKorean[strlen(dic[nDicCount].szKorean) - 1] = 0; // \n 삭제
-
+		
 		// 한글 공백 채워넣기
-		if (dic[nDicCount].nChineseLen > strlen(dic[nDicCount].szKorean))
+		if (bNeedBlank)
 		{
-			int nBlank = dic[nDicCount].nChineseLen - strlen(dic[nDicCount].szKorean);
-
-			for (int j = 0; j < nBlank; j++)
+			if (dic[nDicCount].nChineseLen > strlen(dic[nDicCount].szKorean))
 			{
-				strcat(dic[nDicCount].szKorean, " ");
+				int nBlank = dic[nDicCount].nChineseLen - strlen(dic[nDicCount].szKorean);
+
+				for (int j = 0; j < nBlank; j++)
+				{
+					strcat(dic[nDicCount].szKorean, " ");
+				}
 			}
 		}
-
 		nDicCount++;
 	}
 	fclose(fp);
 
-	LOG(13, "사전에서 %d 문장 읽음.\n", nDicCount);
+//	LOG(13, "사전에서 %d 문장 읽음.\n", nDicCount);
 
 	// 내림차순 정렬	
 	for (int i = 0; i < nDicCount - 1; i++)
@@ -124,43 +125,6 @@ size_t StringSearch(IN BYTE* pbBuffer, IN size_t BufSize, IN size_t Offset, IN B
 	return ret;
 }
 
-HFONT(WINAPI* TrueCreateFontA)(
-	_In_ int cHeight,
-	_In_ int cWidth,
-	_In_ int cEscapement,
-	_In_ int cOrientation,
-	_In_ int cWeight,
-	_In_ DWORD bItalic,
-	_In_ DWORD bUnderline,
-	_In_ DWORD bStrikeOut,
-	_In_ DWORD iCharSet,
-	_In_ DWORD iOutPrecision,
-	_In_ DWORD iClipPrecision,
-	_In_ DWORD iQuality,
-	_In_ DWORD iPitchAndFamily,
-	_In_opt_ LPCSTR pszFaceName) = CreateFontA;
-
-HFONT WINAPI HookCreateFontA(
-	_In_ int cHeight,
-	_In_ int cWidth,
-	_In_ int cEscapement,
-	_In_ int cOrientation,
-	_In_ int cWeight,
-	_In_ DWORD bItalic,
-	_In_ DWORD bUnderline,
-	_In_ DWORD bStrikeOut,
-	_In_ DWORD iCharSet,
-	_In_ DWORD iOutPrecision,
-	_In_ DWORD iClipPrecision,
-	_In_ DWORD iQuality,
-	_In_ DWORD iPitchAndFamily,
-	_In_opt_ LPCSTR pszFaceName)
-{
-	LOG(6, "한글 폰트 패치 완료! %d %d %d %s\n", cHeight, cWidth, cWeight, pszFaceName);
-	if (cHeight == 12) cHeight = 13;
-	return TrueCreateFontA(cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic, bUnderline, bStrikeOut,
-		HANGUL_CHARSET, iOutPrecision, iClipPrecision, iQuality, iPitchAndFamily, pszFaceName);
-}
 
 void PrintLogo()
 {
@@ -182,30 +146,7 @@ void PrintLogo()
 	LOG(10, "개발 : codetronik, 초코\n");
 }
 
-void Hooking()
-{
-	if (DetourIsHelperProcess())
-	{
-		return;
-	}
-	DetourTransactionBegin();
-	DetourUpdateThread(GetCurrentThread());
-	DetourAttach(&(PVOID&)TrueCreateFontA, HookCreateFontA);
-	LONG error = DetourTransactionCommit();
-
-	if (NO_ERROR != error)
-	{
-		LOG(12, "후킹 실패!! 프로세스를 강제 종료해주세요.\n");
-		Sleep(100000);
-	}
-	else
-	{
-		LOG(13, "후킹 성공!!\n");
-	}
-
-}
-
-void Patch(DWORD dwMemAddr, DWORD dwMemSize, DIC *dic, int nDicCount)
+void Trans(DWORD dwMemAddr, DWORD dwMemSize, DIC *dic, int nDicCount)
 {
 	for (int i = 0; i < nDicCount; i++)
 	{
@@ -253,20 +194,22 @@ void Start()
 	DWORD dwThirdServerStringMem = 0x4EB000;
 	DWORD dwThirdServerMemSize = 0x446000;
 	VirtualProtectEx(GetCurrentProcess(), (void*)dwThirdServerStringMem, dwThirdServerMemSize, PAGE_EXECUTE_WRITECOPY, &OldProtect);
-
+	
 	DIC* dic = (DIC*)malloc(sizeof(DIC) * 800);
-	int nDicCount = LoadDictionary("korean.txt", dic);
-	Patch(dwThirdServerStringMem, dwThirdServerMemSize, dic, nDicCount);
+	int nDicCount = LoadDictionary("korean.txt", dic, TRUE);
+	Trans(dwThirdServerStringMem, dwThirdServerMemSize, dic, nDicCount);
 	free(dic);
 
-	// 아이템은 서버에서 받아오므로 수시로 메모리 검색해야 함 
-	dic = (DIC*)malloc(sizeof(DIC) * 800);
-	nDicCount = LoadDictionary("korean_item.txt", dic);
+	// 아이템은 서버에서 받아오므로 수시로 메모리 검색해야 함 		
 	while (1)
 	{
 		Sleep(10000);
-		Patch(dwThirdServerStringMem, dwThirdServerMemSize, dic, nDicCount);
+		dic = (DIC*)malloc(sizeof(DIC) * 800);
+		nDicCount = LoadDictionary("korean_item.txt", dic, TRUE);
+		Trans(dwThirdServerStringMem, dwThirdServerMemSize, dic, nDicCount);
+		free(dic);
 	}
+	
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule,
