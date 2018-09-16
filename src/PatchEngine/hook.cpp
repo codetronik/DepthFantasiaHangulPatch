@@ -73,12 +73,15 @@ void __stdcall TransFieldObject(void* esi)
 		BA A9 B1 AD FB 00
 	*/
 	char *object = (char*)esi + 3;
+
+	/* 대륙에서 1E가 아닌 값들이 발견
 	// NPC, 게시판 등
-	if (*object != 0x1E)
+	if (object[0] != 0x1E)
 	{
 		return;
 	}
-	
+	*/
+
 	char *str;
 	str = (char*)esi + 27;
 
@@ -96,6 +99,8 @@ void __stdcall TransFieldObject(void* esi)
 		}
 	}
 
+	free(dic);
+
 	if (FALSE == bTrans)
 	{
 		// big5->유니코드로 변환
@@ -104,7 +109,6 @@ void __stdcall TransFieldObject(void* esi)
 		//	LOG(11, "len %d len2 %d\n", *len, *len2);
 		LOGW(11, L"필드 오브젝트 : %s\n", szUnicode);
 	}
-	free(dic);
 
 }
 
