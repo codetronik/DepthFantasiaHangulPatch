@@ -85,7 +85,7 @@ void __stdcall TransFieldObject(void* esi)
 	char *str;
 	str = (char*)esi + 27;
 
-	DIC* dic = (DIC*)malloc(sizeof(DIC) * 800);
+	DIC* dic = (DIC*)malloc(sizeof(DIC) * 5800);
 	int nDicCount = LoadDictionary("korean_fieldobject.txt", dic, TRUE);
 
 	BOOL bTrans = FALSE;
@@ -148,7 +148,7 @@ void __stdcall TransMonster(void* esi)
 //	char *len2 = (char*)esi + 5;
 //	char *len = (char*)esi + 14;
 		
-	DIC* dic = (DIC*)malloc(sizeof(DIC) * 800);
+	DIC* dic = (DIC*)malloc(sizeof(DIC) * 5800);
 	int nDicCount = LoadDictionary("korean_monster.txt", dic, TRUE);
 	BOOL bTrans = FALSE;
 
@@ -199,7 +199,7 @@ void __stdcall TransSelect(void* esi)
 		str = (char*)esi;
 	}
 	   
-	DIC* dic = (DIC*)malloc(sizeof(DIC) * 800);
+	DIC* dic = (DIC*)malloc(sizeof(DIC) * 5800);
 	int nDicCount = LoadDictionary("korean_select.txt", dic, TRUE);
 	BOOL bTrans = FALSE;
 
@@ -264,7 +264,7 @@ _CHAT_AND_DIALOGUE CHAT_AND_DIALOGUE;
 int __cdecl HOOK_CHAT_AND_DIALOGUE(void* a1, void* a2, void* a3, void* a4, void* a5, char* a6, int a7, void* a8, void* a9, void* a10, void* a11, void* a12, void* a13)
 {
 
-	DIC* dic = (DIC*)malloc(sizeof(DIC) * 800);
+	DIC* dic = (DIC*)malloc(sizeof(DIC) * 5800);
 	int nDicCount = LoadDictionary("korean_dialogue.txt", dic, FALSE);
 	BOOL bTrans = FALSE;
 

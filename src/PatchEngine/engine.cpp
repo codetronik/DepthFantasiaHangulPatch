@@ -195,7 +195,7 @@ void Start()
 	DWORD dwThirdServerMemSize = 0x446000;
 	VirtualProtectEx(GetCurrentProcess(), (void*)dwThirdServerStringMem, dwThirdServerMemSize, PAGE_EXECUTE_WRITECOPY, &OldProtect);
 	
-	DIC* dic = (DIC*)malloc(sizeof(DIC) * 800);
+	DIC* dic = (DIC*)malloc(sizeof(DIC) * 5800);
 	int nDicCount = LoadDictionary("korean.txt", dic, TRUE);
 	Trans(dwThirdServerStringMem, dwThirdServerMemSize, dic, nDicCount);
 	free(dic);
@@ -204,7 +204,7 @@ void Start()
 	while (1)
 	{
 		Sleep(10000);
-		dic = (DIC*)malloc(sizeof(DIC) * 800);
+		dic = (DIC*)malloc(sizeof(DIC) * 5800);
 		nDicCount = LoadDictionary("korean_item.txt", dic, TRUE);
 		Trans(dwThirdServerStringMem, dwThirdServerMemSize, dic, nDicCount);
 		free(dic);
