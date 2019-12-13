@@ -3,6 +3,8 @@
 #include "engine.h"
 #include "log.h"
 #include "detours\detours.h"
+#include "trans.h"
+#include <time.h>
 
 HFONT(WINAPI* TrueCreateFontA)(
 	_In_ int cHeight,
@@ -105,7 +107,7 @@ void __stdcall TransFieldObject(void* esi)
 	{
 		// big5->유니코드로 변환
 		WCHAR szUnicode[512] = L"";
-		MultiByteToWideChar(950, 0, str, strlen(str), szUnicode, sizeof(szUnicode));
+		MultiByteToWideChar(950, 0, str, strlen(str), szUnicode, sizeof(szUnicode) / sizeof(WCHAR));
 		//	LOG(11, "len %d len2 %d\n", *len, *len2);
 		LOGW(11, L"필드 오브젝트 : %s\n", szUnicode);
 	}
@@ -144,9 +146,21 @@ void __stdcall TransMonster(void* esi)
 		F1 BD BF BD BB 00                                
 	*/
 	char *str = (char*)esi + 15;
+//	LOGHEX((PBYTE)esi, 96);
 
 //	char *len2 = (char*)esi + 5;
-//	char *len = (char*)esi + 14;
+	char *name_len = (char*)esi + 14;
+	/* 다음 버전업때 기능 추가를 위해 남겨둠
+	char* look = (char*)esi + 14 + *name_len + 18;
+	char* look2 = (char*)esi + 14 + *name_len + 19;
+	char* look3 = (char*)esi + 14 + *name_len + 20;
+	LOG(12, "몬스터 외형 : %02x %02x %02x\n", *look, *look2, *look3);
+	*/
+	DWORD *monster_hp = (DWORD*)((DWORD)esi + 15 + *name_len + 4);
+	
+	// 서버에서 받아온 몬스터 체력은 big endian이므로 little endian으로 변환
+	DWORD monhp = (*monster_hp & 0x000000ff) << 24u | (*monster_hp & 0x0000ff00) << 8u 
+				| (*monster_hp & 0x00ff0000) >> 8u | (*monster_hp & 0xff000000) >> 24u;
 		
 	DIC* dic = (DIC*)malloc(sizeof(DIC) * 5800);
 	int nDicCount = LoadDictionary("korean_monster.txt", dic, TRUE);
@@ -154,11 +168,12 @@ void __stdcall TransMonster(void* esi)
 
 	for (int i = 0; i < nDicCount; i++)
 	{
+		// 사전의 중국어 이름과 메모리의 이름 비교
 		if (0 == strncmp(dic[i].szChinese, str, dic[i].nChineseLen))
 		{
-		//	strcpy(str, dic[i].szKorean);
-		//	*len = strlen(dic[i].szKorean);
 			strncpy(str, dic[i].szKorean, dic[i].nChineseLen);
+
+			LOG(11, "몬스터 : %s (MAX HP: %d)\n", str, monhp);
 			bTrans = TRUE;
 		}
 	}
@@ -168,9 +183,8 @@ void __stdcall TransMonster(void* esi)
 	{
 		// big5->유니코드로 변환
 		WCHAR szUnicode[512] = L"";
-		MultiByteToWideChar(950, 0, str, strlen(str), szUnicode, sizeof(szUnicode));
-		//	LOG(11, "len %d len2 %d\n", *len, *len2);
-		LOGW(11, L"몬스터 : %s\n", szUnicode);
+		MultiByteToWideChar(950, 0, str, strlen(str), szUnicode, sizeof(szUnicode) / sizeof(WCHAR));
+		LOGW(11, L"(미번역) 몬스터 : %s (MAX HP : %d)\n", szUnicode, monhp);
 	}
 }
 
@@ -218,7 +232,7 @@ void __stdcall TransSelect(void* esi)
 	{
 		// big5->유니코드로 변환
 		WCHAR szUnicode[512] = L"";
-		MultiByteToWideChar(950, 0, str, strlen(str), szUnicode, sizeof(szUnicode));
+		MultiByteToWideChar(950, 0, str, strlen(str), szUnicode, sizeof(szUnicode) / sizeof(WCHAR));
 		LOGW(11, L"선택지 : %s\n", szUnicode);
 	}
 
@@ -249,7 +263,7 @@ size_t __cdecl HOOK_S_4B4F30(void* a1, void* a2, void* a3, char* a4, void* a5)
 {
 	//big5->unicode
 	WCHAR szUnicode[200] = L"";
-	MultiByteToWideChar(950, 0, a4, strlen(a4), szUnicode, sizeof(szUnicode));
+	MultiByteToWideChar(950, 0, a4, strlen(a4), szUnicode, sizeof(szUnicode) / sizeof(WCHAR));
 	LOGW(11, L"%s\n", szUnicode);
 	return S_4B4F30(a1, a2, a3, a4, a5);
 }
@@ -284,8 +298,9 @@ int __cdecl HOOK_CHAT_AND_DIALOGUE(void* a1, void* a2, void* a3, void* a4, void*
 	{
 		//big5->unicode
 		WCHAR szUnicode[200] = L"";
-		MultiByteToWideChar(950, 0, a6, strlen(a6), szUnicode, sizeof(szUnicode));
+		MultiByteToWideChar(950, 0, a6, strlen(a6), szUnicode, sizeof(szUnicode) / sizeof(WCHAR));
 		LOGW(11, L"대사 : %s\n", szUnicode);
+		PushDialogue(szUnicode);
 	}
 	return CHAT_AND_DIALOGUE(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13);
 }

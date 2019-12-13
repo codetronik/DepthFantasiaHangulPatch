@@ -4,6 +4,8 @@
 #include "engine.h"
 #include "hook.h"
 #include "Log.h"
+#include "trans.h"
+
 
 int LoadDictionary(char* szFileName, DIC *dic, BOOL bNeedBlank)
 {
@@ -41,14 +43,14 @@ int LoadDictionary(char* szFileName, DIC *dic, BOOL bNeedBlank)
 		WCHAR szUnicode[512] = L"";
 		
 		// UTF-8을 유니코드로 변환
-		MultiByteToWideChar(CP_UTF8, 0, token, strlen(token), szUnicode, sizeof(szUnicode));
+		MultiByteToWideChar(CP_UTF8, 0, token, strlen(token), szUnicode, sizeof(szUnicode) / sizeof(WCHAR));
 		// 유니코드를 BIG5로 변환
 		WideCharToMultiByte(950, 0, szUnicode, lstrlenW(szUnicode), dic[nDicCount].szChinese, sizeof(dic[nDicCount].szChinese), NULL, NULL);
 		dic[nDicCount].nChineseLen = strlen(dic[nDicCount].szChinese);
 		ZeroMemory(szUnicode, sizeof(szUnicode));
 
 		// UTF-8을 유니코드로 변환
-		MultiByteToWideChar(CP_UTF8, 0, token2, strlen(token2), szUnicode, sizeof(szUnicode));
+		MultiByteToWideChar(CP_UTF8, 0, token2, strlen(token2), szUnicode, sizeof(szUnicode) / sizeof(WCHAR));
 		// 유니코드를 8비트 ASCII 한국어로 변환
 
 		WideCharToMultiByte(949, 0, szUnicode, lstrlenW(szUnicode), dic[nDicCount].szKorean, sizeof(dic[nDicCount].szKorean), NULL, NULL);
@@ -150,8 +152,8 @@ void Trans(DWORD dwMemAddr, DWORD dwMemSize, DIC *dic, int nDicCount)
 {
 	for (int i = 0; i < nDicCount; i++)
 	{
-		LOG(14, "<%s>", dic[i].szKorean);
-		LOG(10, " 검색중..\n");
+	//	LOG(14, "<%s>", dic[i].szKorean);
+	//	LOG(10, " 검색중..\n");
 
 		size_t Offset = 0;
 
@@ -163,12 +165,12 @@ void Trans(DWORD dwMemAddr, DWORD dwMemSize, DIC *dic, int nDicCount)
 			{
 				break;
 			}
-			LOG(11, "0x%x\t", StartOffset);
+		//	LOG(11, "0x%x\t", StartOffset);
 			Offset = StartOffset + dic[i].nChineseLen;
 			strncpy((char*)((DWORD)dwMemAddr + StartOffset), dic[i].szKorean, dic[i].nChineseLen);
 
 		} while (Offset < dwMemSize);
-		LOG(12, "\n");
+	//	LOG(12, "\n");
 	}
 }
 
@@ -199,6 +201,11 @@ void Start()
 	int nDicCount = LoadDictionary("korean.txt", dic, TRUE);
 	Trans(dwThirdServerStringMem, dwThirdServerMemSize, dic, nDicCount);
 	free(dic);
+
+	// papago thread
+	DWORD dwThread2 = 0;
+	HANDLE hDlgThread2 = 0;
+	hDlgThread2 = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)PapagoThread, 0, 0, &dwThread2);
 
 	// 아이템은 서버에서 받아오므로 수시로 메모리 검색해야 함 		
 	while (1)
