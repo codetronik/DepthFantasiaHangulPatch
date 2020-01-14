@@ -1,27 +1,11 @@
 #define CURL_STATICLIB
 #include "log.h"
-#include <curl.h>
 #include <strsafe.h>
-
+#include "curlwrapper.h"
 WCHAR szDialogStack[100][1000] = { 0, };
 
-struct string 
-{
-	char* ptr;
-	size_t len;
-};
-
-size_t WriteCallback(void* ptr, size_t size, size_t nmemb, struct string* s)
-{
-	size_t new_len = s->len + size * nmemb;
-	s->ptr = (char*)realloc(s->ptr, new_len + 1);
-	memcpy((char*)s->ptr + s->len, ptr, size * nmemb);
-	s->ptr[new_len] = '\0';
-	s->len = new_len;
-
-	return size * nmemb;
-}
-
+char pa_id[100] = { 0, };
+char pa_secret[100] = { 0, };
 void PushDialogue(WCHAR* pszDialogue)
 {
 	for (int i = 0; i < 100; i++)
@@ -36,15 +20,6 @@ void PushDialogue(WCHAR* pszDialogue)
 
 BOOL TransPapago(WCHAR* pszDialogue)
 {
-	CURL* curl;
-	CURLcode res;
-
-	curl = curl_easy_init();
-	if (NULL == curl)
-	{
-		return FALSE;
-	}
-	
 	// 파파고 번역을 매끄럽게 하기 위해 대사에서 \n을 삭제함
 	WCHAR* split = NULL;
 	while (split = wcsstr(pszDialogue, L"\\n"))
@@ -68,38 +43,26 @@ BOOL TransPapago(WCHAR* pszDialogue)
 	// 유니코드를 UTF8로 변환
 	char szUTF8Dialogue[512] = { 0, };
 	WideCharToMultiByte(CP_UTF8, 0, szPostData, lstrlenW(szPostData), szUTF8Dialogue, sizeof(szUTF8Dialogue), NULL, NULL);
-	
-	// curl https response buffer 초기화
-	struct string s;
-	s.len = 0;
-	s.ptr = (char*)malloc(1);
 
-	struct curl_slist* list = NULL;
+	char header1[255] = "Content-Type: application/x-www-form-urlencoded; charset=UTF-8";
+	char header2[255] = "X-Naver-Client-Id: ";
+	char header3[255] = "X-Naver-Client-Secret: ";
+	strcat(header2, pa_id);
+	strcat(header3, pa_secret);
 
-	curl_easy_setopt(curl, CURLOPT_URL, "https://openapi.naver.com/v1/papago/n2mt"); 
-	list = curl_slist_append(list, "Content-Type: application/x-www-form-urlencoded; charset=UTF-8");
-	list = curl_slist_append(list, "X-Naver-Client-Id: SieKKQkciwUN83a2alSp");
-	list = curl_slist_append(list, "X-Naver-Client-Secret: JpiYzwscWO");
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list); 
-	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-	curl_easy_setopt(curl, CURLOPT_POST, 1L); // POST
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, szUTF8Dialogue); 
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(szUTF8Dialogue));
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-
-	res = curl_easy_perform(curl); 
-	curl_slist_free_all(list); 
-
-	if (res != CURLE_OK)
+	BYTE response[1024] = { 0, };
+	DWORD size = 0;
+	BOOL bSuccess = OpenUrl("https://openapi.naver.com/v1/papago/n2mt", header1, header2, header3, szUTF8Dialogue, response, &size);
+	if (FALSE == bSuccess)
 	{
 		return FALSE;
 	}
+
 	// curl 응답값을 유니코드로 변환
 	WCHAR szUnicodeResponse[1000] = { 0, };
-	MultiByteToWideChar(CP_UTF8, 0, (char*)s.ptr, s.len, szUnicodeResponse, sizeof(szUnicodeResponse) / sizeof(WCHAR));
+	MultiByteToWideChar(CP_UTF8, 0, (char*)response, size, szUnicodeResponse, sizeof(szUnicodeResponse) / sizeof(WCHAR));
 
+	
 	// 파파고 응답값에서 번역 추출
 	WCHAR* start = wcsstr(szUnicodeResponse, L"Text\"");
 	WCHAR* end = wcsstr(szUnicodeResponse, L"\"}}");
@@ -117,13 +80,39 @@ BOOL TransPapago(WCHAR* pszDialogue)
 	char szAnsiResponse[1000] = { 0, };
 	WideCharToMultiByte(949, 0, szTrans, lstrlenW(szTrans), szAnsiResponse, sizeof(szAnsiResponse), NULL, NULL);
 	LOG(12, "번역 대사 : %s\n", szAnsiResponse);
-	free(s.ptr);
-	curl_easy_cleanup(curl);
-	curl_global_cleanup(); 
+
 }
 
 void PapagoThread()
 {
+	// 파파고 사용시 id, secret 설정
+	char szCurrentDirectory[MAX_PATH] = { 0, };
+	GetCurrentDirectoryA(MAX_PATH, szCurrentDirectory);
+	strcat(szCurrentDirectory, "\\");
+	strcat(szCurrentDirectory, "papago.txt");
+
+	FILE* fp = fopen(szCurrentDirectory, "r");
+	
+	if (NULL == fp)
+	{
+		return;
+	}
+	char buf[512] = { 0, };
+	while (!feof(fp))
+	{
+		fgets(buf, sizeof(buf), fp);
+		if (strstr(buf, "$$$$")) continue;
+		if (strstr(buf, "%%%%")) break;
+	
+		char* context = NULL;
+		char* token = strtok_s(buf, ":", &context);
+		char* token2 = strtok_s(NULL, ":", &context);
+		strcpy(pa_id, token);
+		strcpy(pa_secret, token2);
+		pa_secret[strlen(pa_secret) - 1] = 0; // \n 삭제
+	}
+	if (fp)	fclose(fp);
+
 	while (1)
 	{
 		Sleep(100);

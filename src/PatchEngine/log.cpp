@@ -32,7 +32,8 @@ void LOGW(int nColor, LPWSTR lpszLog, ...)
 void LOGHEX(PBYTE pbHex, DWORD dwSize)
 {
 #if defined(LOG_ON)
-	char* szBuffer = (char*)malloc(25000);
+	char* szBuffer = (char*)malloc(dwSize * 2);
+	memset(szBuffer, 0, dwSize * 2);
 	for (int i = 0; i < dwSize; i++)
 	{
 		if (i % 16 == 0)
@@ -47,4 +48,22 @@ void LOGHEX(PBYTE pbHex, DWORD dwSize)
 	printf("%s", szBuffer);
 	free(szBuffer);
 #endif
+}
+int isReadableMemory(LPVOID pMemoryAddr)
+{
+	MEMORY_BASIC_INFORMATION MemInfo = { 0, };
+	SIZE_T Result = VirtualQuery(pMemoryAddr, &MemInfo, sizeof(MemInfo));
+
+	if (Result == 0)
+	{
+		return -1;
+	}
+	else if (MemInfo.State & MEM_COMMIT)
+	{
+		return 0;
+	}
+	else
+	{
+		return MemInfo.State;
+	}
 }

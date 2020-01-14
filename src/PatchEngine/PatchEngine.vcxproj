@@ -126,7 +126,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>legacy_stdio_definitions.lib;detours\detours.lib;curl\libcurl.lib;ws2_32.lib;crypt32.lib;wldap32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>legacy_stdio_definitions.lib;detours\detours.lib;curl\libcurl.lib;ws2_32.lib;crypt32.lib;wldap32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -147,16 +147,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="curlwrapper.cpp" />
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="hook.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="trans.cpp" />
+    <ClCompile Include="unzip.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="curlwrapper.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="hook.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="trans.h" />
+    <ClInclude Include="unzip.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
