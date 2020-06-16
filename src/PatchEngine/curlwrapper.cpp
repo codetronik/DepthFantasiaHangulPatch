@@ -68,6 +68,8 @@ BOOL OpenUrl(char* url, char* header1, char* header2, char* header3, char *field
 		goto EXIT_ERROR;
 	}
 	memcpy(response, s.ptr, s.len);
+	fflush(stdout); // fflush 안하면 crash 발생함
+
 	*size = s.len;
 	bRet = TRUE;
 	goto EXIT;

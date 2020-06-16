@@ -79,6 +79,13 @@ BOOL TransPapago(WCHAR* pszDialogue)
 	// 유니코드를 8비트 ASCII 한국어로 변환
 	char szAnsiResponse[1000] = { 0, };
 	WideCharToMultiByte(949, 0, szTrans, lstrlenW(szTrans), szAnsiResponse, sizeof(szAnsiResponse), NULL, NULL);
+	
+	char* enter = strstr(szAnsiResponse, "\",\"");
+	if (enter) {
+
+		enter[0] = 0x00;
+	}
+
 	LOG(12, "번역 대사 : %s\n", szAnsiResponse);
 
 }

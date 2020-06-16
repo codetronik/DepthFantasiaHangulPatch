@@ -40,7 +40,7 @@ void Updater()
 	
 	DWORD size = 0;
 
-	BOOL bSuccess = OpenUrl("http://52.79.240.233/api/v1/dictionary/version", NULL, NULL, NULL, NULL, response, &size);
+	BOOL bSuccess = OpenUrl("http://13.209.144.252/api/v1/dictionary/version", NULL, NULL, NULL, NULL, response, &size);
 	if (FALSE == bSuccess)
 	{
 		LOG(5, "사전 서버와의 연결에 실패하였습니다.\n");
@@ -63,7 +63,7 @@ void Updater()
 	}
 	LOG(13, "사전 파일을 최신 버전으로 갱신합니다.\n");
 DOWNLOAD:
-	bSuccess = OpenUrl("http://52.79.240.233/api/v1/dict-file", NULL, NULL, NULL, NULL, response, &size);
+	bSuccess = OpenUrl("http://13.209.144.252/api/v1/dict-file", NULL, NULL, NULL, NULL, response, &size);
 	if (FALSE == bSuccess)
 	{
 		LOG(5, "사전 서버와의 연결에 실패하였습니다.\n");
